@@ -1,0 +1,85 @@
+version: '3.7'
+
+services:
+  pp-currency-exchange:
+    image: santhoshbhatti/ppv2-pied-piper-currency-exchange-service:0.0.1-SNAPSHOT
+    mem_limit: 700m
+    ports:
+      - "8000:8000"
+    networks:
+      - pp-currency-network
+    depends_on:
+      - pp-currency-service-registry
+    environment:
+      eureka.client.serviceUrl.defaultZone: http://pp-currency-service-registry:8761/eureka
+      spring.zipkin.baseUrl: http://pp-currency-zipkin-server:9411
+      RABBIT_URI: amqp://guest:guest@pp-rabbitmq:5672
+      SPRING_RABBITMQ_HOST: pp-rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+           
+  pp-currency-conversion:
+    image: santhoshbhatti/ppv2-pied-piper-currency-conversion-service:0.0.1-SNAPSHOT
+    mem_limit: 700m
+    ports:
+      - "8100:8100"
+    networks:
+      - pp-currency-network
+    depends_on:
+      - pp-currency-service-registry
+      - pp-currency-exchange
+    environment:
+      eureka.client.serviceUrl.defaultZone: http://pp-currency-service-registry:8761/eureka
+      spring.zipkin.baseUrl: http://pp-currency-zipkin-server:9411
+      RABBIT_URI: amqp://guest:guest@pp-rabbitmq:5672
+      SPRING_RABBITMQ_HOST: pp-rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+            
+  pp-currency-service-registry:
+    image: santhoshbhatti/ppv2-pied-piper-service-registry:0.0.1-SNAPSHOT
+    mem_limit: 700m
+    ports:
+      - "8761:8761"
+    networks:
+      - pp-currency-network
+    environment:
+      spring.zipkin.baseUrl: http://pp-currency-zipkin-server:9411
+      RABBIT_URI: amqp://guest:guest@pp-rabbitmq:5672
+      SPRING_RABBITMQ_HOST: pp-rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+           
+  pp-currency-api-gateway:
+    image: santhoshbhatti/ppv2-pied-piper-api-gateway:0.0.1-SNAPSHOT
+    mem_limit: 700m
+    ports:
+      - "8765:8765"
+    networks:
+      - pp-currency-network
+    environment:
+      eureka.client.serviceUrl.defaultZone: http://pp-currency-service-registry:8761/eureka
+      spring.zipkin.baseUrl: http://pp-currency-zipkin-server:9411
+      RABBIT_URI: amqp://guest:guest@pp-rabbitmq:5672
+      SPRING_RABBITMQ_HOST: pp-rabbitmq
+      SPRING_ZIPKIN_SENDER_TYPE: rabbit
+      
+  pp-currency-zipkin-server:
+    image: openzipkin/zipkin:2.23
+    mem_limit: 700m
+    ports:
+      - "9411:9411"
+    networks:
+      - pp-currency-network
+    environment:
+      RABBIT_URI: amqp://guest:guest@pp-rabbitmq:5672
+    depends_on:
+      - pp-rabbitmq
+      
+  pp-rabbitmq:
+    image: rabbitmq:3.5.3-management
+    mem_limit: 300m
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - pp-currency-network   
+networks:
+  pp-currency-network:
